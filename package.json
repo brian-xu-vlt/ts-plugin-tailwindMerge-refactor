@@ -1,13 +1,22 @@
 {
-    "name": "ts-plugin-tailwind-refactor",
-    "version": "0.0.1",
-    "license": "MIT",
-    "main": "./out",
-    "dependencies": {
-        "typescript": "5.8.3"
-    },
-    "devDependencies": {
-        "@biomejs/biome": "1.9.4",
-        "@types/node": "^22.15.17"
-    }
+  "name": "ts-plugin-tailwind-refactor",
+  "version": "0.0.1",
+  "license": "MIT",
+  "main": "./out",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "examples:install": "cd examples && pnpm install",
+    "examples:build": "cd examples && pnpm run build",
+    "examples:start": "cd examples && pnpm run start",
+    "examples:link": "cd examples && pnpm install && pnpm link ..",
+    "dev:all": "pnpm run build && pnpm run examples:build && pnpm run examples:start"
+  },
+  "dependencies": {
+    "typescript": "5.8.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@types/node": "^22.15.17"
+  }
 }

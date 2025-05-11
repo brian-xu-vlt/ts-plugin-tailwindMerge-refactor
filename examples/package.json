@@ -1,5 +1,5 @@
 {
-  "name": "tailwind-refactor-example",
+  "name": "ts-plugin-tailwind-refactor-examples",
   "version": "1.0.0",
   "description": "Example usage of ts-plugin-tailwind-refactor",
   "scripts": {
