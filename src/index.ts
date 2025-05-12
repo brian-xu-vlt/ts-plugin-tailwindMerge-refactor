@@ -47,9 +47,15 @@ function init(modules: { typescript: typeof ts }) {
         positionOrRange,
         functionName,
       );
+      const nodeWithBracedString = findClassNameWithBracedStringAtPosition(
+        ts,
+        sourceFile,
+        positionOrRange,
+      );
 
-      // If neither type of node was found, return previous refactors
-      if (!nodeWithString && !nodeWithTailwindMerge) return prior;
+      // If none of the node types was found, return previous refactors
+      if (!nodeWithString && !nodeWithTailwindMerge && !nodeWithBracedString)
+        return prior;
 
       const refactor: ts.ApplicableRefactorInfo = {
         name: 'tailwindMergeRefactor',
@@ -62,6 +68,14 @@ function init(modules: { typescript: typeof ts }) {
         refactor.actions.push({
           name: 'wrapWithTailwindMerge',
           description: 'Wrap className attribute with tailwindMerge',
+        });
+      }
+
+      // Add action to wrap with tailwindMerge if we found a braced string
+      if (nodeWithBracedString) {
+        refactor.actions.push({
+          name: 'wrapBracedStringWithTailwindMerge',
+          description: 'Wrap braced className string with tailwindMerge',
         });
       }
 
@@ -118,6 +132,37 @@ function init(modules: { typescript: typeof ts }) {
         if (!initializer || !ts.isStringLiteral(initializer)) return;
 
         const newText = `className={${functionName}(${initializer.getText()})}`;
+
+        const change: ts.TextChange = {
+          span: {
+            start: node.getStart(),
+            length: node.getWidth(),
+          },
+          newText,
+        };
+        return {
+          edits: [
+            {
+              fileName,
+              textChanges: [change],
+            },
+          ],
+        };
+      }
+
+      // Handle the action to wrap braced string with tailwindMerge
+      if (actionName === 'wrapBracedStringWithTailwindMerge') {
+        const node = findClassNameWithBracedStringAtPosition(
+          ts,
+          sourceFile,
+          positionOrRange,
+        );
+        if (!node) return;
+
+        const jsxExpression = node.initializer as ts.JsxExpression;
+        const stringLiteral = jsxExpression.expression as ts.StringLiteral;
+
+        const newText = `className={${functionName}(${stringLiteral.getText()})}`;
 
         const change: ts.TextChange = {
           span: {
@@ -230,6 +275,37 @@ function init(modules: { typescript: typeof ts }) {
         node.initializer.expression.expression.text === functionName &&
         node.initializer.expression.arguments.length === 1 &&
         ts.isStringLiteral(node.initializer.expression.arguments[0]) &&
+        pos >= node.getStart() &&
+        pos <= node.getEnd()
+      ) {
+        return node;
+      }
+
+      return ts.forEachChild(node, find);
+    }
+
+    return find(sourceFile);
+  }
+
+  function findClassNameWithBracedStringAtPosition(
+    ts: typeof typescript,
+    sourceFile: ts.SourceFile,
+    positionOrRange: number | ts.TextRange,
+  ): ts.JsxAttribute | undefined {
+    const pos =
+      typeof positionOrRange === 'number'
+        ? positionOrRange
+        : positionOrRange.pos;
+
+    function find(node: ts.Node): ts.JsxAttribute | undefined {
+      if (
+        ts.isJsxAttribute(node) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === 'className' &&
+        node.initializer &&
+        ts.isJsxExpression(node.initializer) &&
+        node.initializer.expression &&
+        ts.isStringLiteral(node.initializer.expression) &&
         pos >= node.getStart() &&
         pos <= node.getEnd()
       ) {

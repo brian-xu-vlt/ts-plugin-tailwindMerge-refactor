@@ -1,40 +1,38 @@
 import type React from 'react';
 import { useState } from 'react';
-import { ExampleComponent } from './ExampleComponent';
+import { tailwindMerge } from './utils';
 
 export const App: React.FC = () => {
   const [isActive, setIsActive] = useState(false);
   const [isDisabled, setIsDisabled] = useState(false);
 
   return (
-    <div className="p-8 max-w-md mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Tailwind Merge Plugin Demo</h1>
+    <div>
+      <h2>Tailwind Refactor Plugin Examples</h2>
 
-      <div className="mb-4">
-        <button
-          className="px-4 py-2 bg-blue-500 text-white rounded mr-2"
-          onClick={() => setIsActive(!isActive)}
-        >
-          Toggle Active: {isActive ? 'On' : 'Off'}
-        </button>
-
-        <button
-          className="px-4 py-2 bg-gray-500 text-white rounded"
-          onClick={() => setIsDisabled(!isDisabled)}
-        >
-          Toggle Disabled: {isDisabled ? 'On' : 'Off'}
-        </button>
+      {/* ✅ Example 1: Regular className as a string */}
+      <div className={'p-4 m-2 bg-gray-100 rounded-md shadow-sm'}>
+        This div uses a regular className string.
+        {/* ✅ Example 2: Braced className as a string */}
+        <p className={'text-sm text-gray-600 mt-2'}>
+          You can use the refactor tool to convert this to use tailwindMerge
+        </p>
       </div>
 
-      <ExampleComponent isActive={isActive} isDisabled={isDisabled} />
-
-      <div className="mt-8 p-4 bg-yellow-100 rounded border border-yellow-400">
-        <h3 className="font-semibold">How to use the plugin:</h3>
-        <ol className="list-decimal ml-5 mt-2">
-          <li>Place your cursor inside a className string</li>
-          <li>Use the refactoring command (Ctrl+. or Cmd+.)</li>
-          <li>Select "Wrap className with tailwindMerge helper"</li>
-        </ol>
+      {/* 🔴 Example: TailwindMerge function with multiple string arguments, will not offer code action */}
+      <div
+        className={tailwindMerge(
+          'p-4 m-2 rounded-md shadow-sm',
+          isActive ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800',
+          isDisabled && 'opacity-50 cursor-not-allowed',
+        )}
+      >
+        This div already uses the tailwindMerge function.
+        {/* ✅ Example 3: TailwindMerge function with single string argument */}
+        <p className={tailwindMerge('text-sm mt-2')}>
+          This approach helps avoid class conflicts and enables conditional
+          styling.
+        </p>
       </div>
     </div>
   );
