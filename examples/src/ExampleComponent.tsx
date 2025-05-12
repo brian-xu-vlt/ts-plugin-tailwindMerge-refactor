@@ -18,7 +18,7 @@ export const ExampleComponent: React.FC<ExampleProps> = ({
       {/* Example 1: Regular className as a string */}
       <div className="p-4 m-2 bg-gray-100 rounded-md shadow-sm">
         This div uses a regular className string.
-        <p className="text-sm text-gray-600 mt-2">
+        <p className={tailwindMerge('text-sm text-gray-600 mt-2')}>
           You can use the refactor tool to convert this to use tailwindMerge
         </p>
       </div>

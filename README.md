@@ -49,6 +49,9 @@ into:
 <div className={tailwindMerge("p-4 m-2 bg-gray-100")}>Content</div>
 ```
 
+And vice-versa, if `tailwindMerge` function contains a single string argument
+
+
 ## Example
 
 Check out the [examples directory](./examples) for a complete working example of this plugin in action.
@@ -58,24 +61,11 @@ Check out the [examples directory](./examples) for a complete working example of
 You can run the example using our pnpm workspace setup:
 
 ```bash
-# Install dependencies for the example
-pnpm run examples:install
-
-# Build the example
-pnpm run examples:build
-
-# Start the example in watch mode
-pnpm run examples:start
+pnpm install
+pnpm build
+cd examples
+pnpm install
+pnpm build
+code .
 ```
 
-Alternatively, you can open the workspace file in VS Code and use the pre-configured tasks:
-
-```bash
-code ts-plugin-tailwind-refactor.code-workspace
-```
-
-Then press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS) and type "Run Task", then select one of the example tasks.
-
-## License
-
-MIT

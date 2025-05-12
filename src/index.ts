@@ -36,36 +36,68 @@ function init(modules: { typescript: typeof ts }) {
         ?.getSourceFile(fileName);
       if (!sourceFile) return prior;
 
-      const node = findClassNameNodeAtPosition(ts, sourceFile, positionOrRange);
-      if (!node) return prior;
+      const nodeWithString = findClassNameNodeAtPosition(
+        ts,
+        sourceFile,
+        positionOrRange,
+      );
+      const nodeWithTailwindMerge = findClassNameWithTailwindMergeAtPosition(
+        ts,
+        sourceFile,
+        positionOrRange,
+        functionName,
+      );
+
+      // If neither type of node was found, return previous refactors
+      if (!nodeWithString && !nodeWithTailwindMerge) return prior;
 
       const refactor: ts.ApplicableRefactorInfo = {
         name: 'tailwindMergeRefactor',
-        description: 'Wrap className string with tailwindMerge helper function',
-        actions: [
-          {
-            name: 'wrapWithTailwindMerge',
-            description: 'Wrap className attribute with tailwindMerge',
-          },
-        ],
+        description: 'Tailwind className refactoring options',
+        actions: [],
       };
 
-      prior.push(refactor);
+      // Add action to wrap with tailwindMerge if we found a string className
+      if (nodeWithString) {
+        refactor.actions.push({
+          name: 'wrapWithTailwindMerge',
+          description: 'Wrap className attribute with tailwindMerge',
+        });
+      }
+
+      // Add action to unwrap from tailwindMerge if we found a tailwindMerge call with a single argument
+      if (nodeWithTailwindMerge) {
+        refactor.actions.push({
+          name: 'unwrapFromTailwindMerge',
+          description: 'Convert tailwindMerge call back to string',
+        });
+      }
+
+      // Only add the refactor if we have at least one action
+      if (refactor.actions.length > 0) {
+        prior.push(refactor);
+      }
+
       return prior;
     };
 
     proxy.getEditsForRefactor = (
       fileName: string,
-      _formatOptions: ts.FormatCodeSettings | undefined,
+      formatOptions: ts.FormatCodeSettings,
       positionOrRange: number | ts.TextRange,
       refactorName: string,
       actionName: string,
+      preferences: ts.UserPreferences | undefined,
     ) => {
-      if (
-        refactorName !== 'tailwindMergeRefactor' ||
-        actionName !== 'wrapWithTailwindMerge'
-      ) {
-        return;
+      if (refactorName !== 'tailwindMergeRefactor') {
+        return info.languageService.getEditsForRefactor(
+          fileName,
+          formatOptions,
+          positionOrRange,
+          refactorName,
+          actionName,
+          preferences,
+        );
       }
 
       const sourceFile = info.languageService
@@ -73,30 +105,73 @@ function init(modules: { typescript: typeof ts }) {
         ?.getSourceFile(fileName);
       if (!sourceFile) return;
 
-      const node = findClassNameNodeAtPosition(ts, sourceFile, positionOrRange);
-      if (!node) return;
+      // Handle the action to wrap with tailwindMerge
+      if (actionName === 'wrapWithTailwindMerge') {
+        const node = findClassNameNodeAtPosition(
+          ts,
+          sourceFile,
+          positionOrRange,
+        );
+        if (!node) return;
 
-      const initializer = node.initializer;
-      if (!initializer || !ts.isStringLiteral(initializer)) return;
+        const initializer = node.initializer;
+        if (!initializer || !ts.isStringLiteral(initializer)) return;
 
-      const newText = `className={${functionName}(${initializer.getText()})}`;
+        const newText = `className={${functionName}(${initializer.getText()})}`;
 
-      const change: ts.TextChange = {
-        span: {
-          start: node.getStart(),
-          length: node.getWidth(),
-        },
-        newText,
-      };
-
-      return {
-        edits: [
-          {
-            fileName,
-            textChanges: [change],
+        const change: ts.TextChange = {
+          span: {
+            start: node.getStart(),
+            length: node.getWidth(),
           },
-        ],
-      };
+          newText,
+        };
+
+        return {
+          edits: [
+            {
+              fileName,
+              textChanges: [change],
+            },
+          ],
+        };
+      }
+
+      // Handle the action to unwrap from tailwindMerge
+      if (actionName === 'unwrapFromTailwindMerge') {
+        const node = findClassNameWithTailwindMergeAtPosition(
+          ts,
+          sourceFile,
+          positionOrRange,
+          functionName,
+        );
+        if (!node) return;
+
+        const jsxExpression = node.initializer as ts.JsxExpression;
+        const callExpression = jsxExpression.expression as ts.CallExpression;
+        const stringArg = callExpression.arguments[0] as ts.StringLiteral;
+
+        const newText = `className=${stringArg.getText()}`;
+
+        const change: ts.TextChange = {
+          span: {
+            start: node.getStart(),
+            length: node.getWidth(),
+          },
+          newText,
+        };
+
+        return {
+          edits: [
+            {
+              fileName,
+              textChanges: [change],
+            },
+          ],
+        };
+      }
+
+      return;
     };
 
     return proxy;
@@ -119,6 +194,42 @@ function init(modules: { typescript: typeof ts }) {
         node.name.text === 'className' &&
         node.initializer &&
         ts.isStringLiteral(node.initializer) &&
+        pos >= node.getStart() &&
+        pos <= node.getEnd()
+      ) {
+        return node;
+      }
+
+      return ts.forEachChild(node, find);
+    }
+
+    return find(sourceFile);
+  }
+
+  function findClassNameWithTailwindMergeAtPosition(
+    ts: typeof typescript,
+    sourceFile: ts.SourceFile,
+    positionOrRange: number | ts.TextRange,
+    functionName: string,
+  ): ts.JsxAttribute | undefined {
+    const pos =
+      typeof positionOrRange === 'number'
+        ? positionOrRange
+        : positionOrRange.pos;
+
+    function find(node: ts.Node): ts.JsxAttribute | undefined {
+      if (
+        ts.isJsxAttribute(node) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === 'className' &&
+        node.initializer &&
+        ts.isJsxExpression(node.initializer) &&
+        node.initializer.expression &&
+        ts.isCallExpression(node.initializer.expression) &&
+        ts.isIdentifier(node.initializer.expression.expression) &&
+        node.initializer.expression.expression.text === functionName &&
+        node.initializer.expression.arguments.length === 1 &&
+        ts.isStringLiteral(node.initializer.expression.arguments[0]) &&
         pos >= node.getStart() &&
         pos <= node.getEnd()
       ) {
