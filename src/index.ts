@@ -45,7 +45,7 @@ function init(modules: { typescript: typeof ts }) {
         actions: [
           {
             name: 'wrapWithTailwindMerge',
-            description: 'Wrap className="..." with tailwindMerge helper',
+            description: 'Wrap className attribute with tailwindMerge',
           },
         ],
       };

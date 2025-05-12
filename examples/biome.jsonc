@@ -6,20 +6,9 @@
     "useIgnoreFile": false
   },
   "files": {
-    "include": [
-      "src/**/*",
-      "examples/**/*"
-    ],
+    "include": ["src/**/*", "examples/**/*"],
     "ignoreUnknown": false,
-    "ignore": [
-      "node_modules",
-      "build",
-      "cjs",
-      "dist",
-      "esm",
-      "lib",
-      "out"
-    ]
+    "ignore": ["node_modules", "build", "cjs", "dist", "esm", "lib", "out"]
   },
   "formatter": {
     "enabled": true,
